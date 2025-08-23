@@ -1,6 +1,7 @@
 #![allow(unused)]
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use crossterm::style::Color;
+use crossterm::terminal::enable_raw_mode;
 use crossterm::{
     cursor, execute,
     style::Print,
@@ -19,14 +20,16 @@ fn run_game() {
     let mut world = World::new();
     let mut builder = EntityBuilder::new();
 
-    let player = world.spawn(builder
-        .add(Pos { x: 1, y: 1 })
-        .add(Renderable {
-            glyph: '@',
-            fg: Color::White,
-            bg: Color::Black,
-        })
-        .build());
+    let player = world.spawn(
+        builder
+            .add(Pos { x: 1, y: 1 })
+            .add(Renderable {
+                glyph: '@',
+                fg: Color::White,
+                bg: Color::Black,
+            })
+            .build(),
+    );
 
     'game_loop: loop {
         terminal::draw(terminal::test_map(), &mut world, &player);
@@ -49,12 +52,19 @@ fn run_game() {
 
 fn try_move(world: &mut World, entity: &Entity, x: i8, y: i8) {
     if let Ok(mut pos) = world.get_mut::<Pos>(*entity) {
-        pos.x += x as i16;
-        pos.y += y as i16;
+        let target_pos = (pos.x + x as i16, pos.y + y as i16);
+        match terminal::test_map()[terminal::xy_idx(target_pos.0, target_pos.1)] {
+            terminal::TileType::Floor => {
+                pos.x += x as i16;
+                pos.y += y as i16;
+            }
+            terminal::TileType::Wall => (),
+        }
     }
 }
 
 fn main() {
+    enable_raw_mode().unwrap();
     // clear
     execute!(
         io::stdout(),
