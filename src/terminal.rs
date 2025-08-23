@@ -69,15 +69,7 @@ pub fn draw(tilemap: Vec<TileType>, world: &mut World, player: &Entity) -> io::R
     let mut stdout = io::stdout();
     let mut buffer: Vec<char> = Vec::with_capacity(SIZE);
 
-    // clear
-    execute!(
-        stdout,
-        EnterAlternateScreen,
-        Clear(ClearType::All),
-        cursor::Hide
-    )?;
-
-    // draw map
+    // add map
     for tile in tilemap {
         let ch = match (tile) {
             TileType::Wall => '#',
@@ -86,15 +78,16 @@ pub fn draw(tilemap: Vec<TileType>, world: &mut World, player: &Entity) -> io::R
         buffer.push(ch);
     }
 
-    // draw player
+    // add player
     if let Ok(mut pos) = world.get_mut::<Pos>(*player) {
         buffer[xy_idx(pos.x, pos.y)] = '@';
     } else {
         panic!("cannot find player")
     }
 
-    // draw monsters
+    // add monsters
 
+    // draw on screen
     for row in 0..HEIGHT {
         let start = row * WIDTH;
         let end = start + WIDTH;
