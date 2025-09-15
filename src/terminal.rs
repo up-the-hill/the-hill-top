@@ -1,8 +1,9 @@
 #![allow(unused)]
 
+use crate::game::{Pos, TileType, xy_idx};
 use crossterm::{
     cursor, execute,
-    style::{Color, Print},
+    style::Print,
     terminal::{
         Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, ScrollUp, SetSize, size,
     },
@@ -10,67 +11,19 @@ use crossterm::{
 use hecs::{Entity, World};
 use std::io::{self, Write};
 
-const HEIGHT: usize = 40;
-const WIDTH: usize = 80;
-const SIZE: usize = WIDTH * HEIGHT;
+pub const HEIGHT: usize = 40;
+pub const WIDTH: usize = 80;
+pub const SIZE: usize = WIDTH * HEIGHT;
 
-pub struct Pos {
-    pub x: i16,
-    pub y: i16,
-}
-
-pub struct Renderable {
-    pub glyph: char,
-    pub fg: Color,
-    pub bg: Color,
-}
-
-#[derive(PartialEq, Copy, Clone)]
-pub enum TileType {
-    Wall,
-    Floor,
-}
-
-pub fn xy_idx(x: i16, y: i16) -> usize {
-    (y as usize * 80) + x as usize
-}
-
-pub fn idx_xy(idx: usize) -> (i16, i16) {
-    let y = (idx / 80) as i16;
-    let x = (idx % 80) as i16;
-    (x, y)
-}
-
-fn read_map() -> Vec<TileType> {
-    let mut map = vec![TileType::Floor; 80 * 40];
-    // TODO:
-    map
-}
-
-pub fn test_map() -> Vec<TileType> {
-    let mut map = vec![TileType::Floor; 80 * 40];
-
-    // Make the boundaries walls
-    for x in 0..80 {
-        map[xy_idx(x, 0)] = TileType::Wall;
-        map[xy_idx(x, 39)] = TileType::Wall;
-    }
-    for y in 0..40 {
-        map[xy_idx(0, y)] = TileType::Wall;
-        map[xy_idx(79, y)] = TileType::Wall;
-    }
-
-    // TODO: read a map
-
-    map
-}
-
-pub fn draw(tilemap: Vec<TileType>, world: &mut World, player: &Entity) -> io::Result<()> {
+pub fn draw_map(world: &mut World, player: &Entity) -> io::Result<()> {
     let mut stdout = io::stdout();
     let mut buffer: Vec<char> = Vec::with_capacity(SIZE);
 
+    let mut map_query = world.query::<(&Vec<TileType>,)>();
+    let (map,) = map_query.iter().next().unwrap().1;
+
     // add map
-    for tile in tilemap {
+    for tile in map.iter() {
         let ch = match (tile) {
             TileType::Wall => '#',
             TileType::Floor => '.',
@@ -87,7 +40,7 @@ pub fn draw(tilemap: Vec<TileType>, world: &mut World, player: &Entity) -> io::R
 
     // add monsters
 
-    // draw on screen
+    // draw map on screen
     for row in 0..HEIGHT {
         let start = row * WIDTH;
         let end = start + WIDTH;
@@ -97,8 +50,34 @@ pub fn draw(tilemap: Vec<TileType>, world: &mut World, player: &Entity) -> io::R
         execute!(stdout, cursor::MoveTo(0, row as u16), Print(&row_s))?;
     }
 
-    // Ensure everything is flushed
     stdout.flush()?;
+
+    Ok(())
+}
+
+pub fn draw_box(x1: i16, y1: i16, x2: i16, y2: i16) -> io::Result<()> {
+    let mut stdout = io::stdout();
+
+    for y in y1..y2 {
+        execute!(stdout, cursor::MoveTo(x1 as u16, y as u16), Print("│"))?;
+        execute!(stdout, cursor::MoveTo(x2 as u16, y as u16), Print("│"))?;
+    }
+
+    for x in x1..x2 {
+        execute!(stdout, cursor::MoveTo(x as u16, y1 as u16), Print("─"))?;
+        execute!(stdout, cursor::MoveTo(x as u16, y2 as u16), Print("─"))?;
+    }
+
+    execute!(stdout, cursor::MoveTo(x1 as u16, y1 as u16), Print("┌"))?;
+    execute!(stdout, cursor::MoveTo(x2 as u16, y1 as u16), Print("┐"))?;
+    execute!(stdout, cursor::MoveTo(x1 as u16, y2 as u16), Print("└"))?;
+    execute!(stdout, cursor::MoveTo(x2 as u16, y2 as u16), Print("┘"))?;
+
+    Ok(())
+}
+
+pub fn draw_ui() -> io::Result<()> {
+    draw_box(0, 40, 79, 45)?;
 
     Ok(())
 }
